@@ -29,8 +29,11 @@ import javax.swing.JFileChooser;
 
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.InputStream;
 import java.awt.event.ActionEvent;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -44,6 +47,7 @@ import java.awt.GraphicsEnvironment;
 import javax.swing.JTextArea;
 import javax.swing.JComboBox;
 import javax.swing.SwingConstants;
+import javax.swing.Timer;
 
 public class MiniEditorJava extends JFrame 
 {
@@ -56,11 +60,14 @@ public class MiniEditorJava extends JFrame
 	private JLabel lblFonte;
 	private JLabel lblTamanho;
 	private JLabel lblEstilo;
-			
+	private JLabel lblAutor;
+    			
 	private JComboBox<String> novaFonte;
 	private JComboBox<Integer> novoTamanho;
 	private JComboBox<String> novoEstilo;
 	
+	private JTextField tfAutor;
+	private JTextField tfPensamentos;
 	private JTextField txtArquivo;
 	private JTextArea txtTexto;
 	
@@ -69,22 +76,24 @@ public class MiniEditorJava extends JFrame
 	private Font areaFonte;
 	private Integer tamFonte;
 	private Integer tamanhoLimite=35;
+	private Integer tempo=7;
 	private ArrayList<Integer> tamanhoPermitido;
+	private List <String> pensamento;
 	
 	private JFileChooser arq;
 	FileNameExtensionFilter extensoesPermitidas;
     ComponentOrientation posicao = ComponentOrientation.LEFT_TO_RIGHT;
-    private JLabel lblAutor;
-
+    
 
 	/**
 	 * Create the frame.
+	 * @throws FileNotFoundException 
 	 */
 	@SuppressWarnings("unchecked")
-	public MiniEditorJava() {
+	public MiniEditorJava() throws FileNotFoundException {
 		setResizable(false);
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 820, 363);
+		setBounds(100, 100, 820, 370);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
@@ -158,6 +167,9 @@ public class MiniEditorJava extends JFrame
 		//Padrao de fontes		
 		defaultFonte();
 		
+		//Pensamentos
+		getPensamentos();
+		
 		//Monitora alteracao na combo Fonte
 		novaFonte.addActionListener(new ActionListener()
 		{
@@ -187,6 +199,19 @@ public class MiniEditorJava extends JFrame
 				txtArea.setFont(new Font((String) novaFonte.getSelectedItem(),estiloAtual, (Integer) novoTamanho.getSelectedItem()));
 			}
 		});
+		
+		//Atualiza pensamentos aleatorios
+		ActionListener atualizaPensamentos = new ActionListener() 
+		{  
+		    public void actionPerformed(ActionEvent ev){
+		    	runPensamentos();
+		    }
+		};  
+		
+		Integer cron= (int) (tempo * Math.pow(10, 3));
+		Timer timer = new Timer(cron, atualizaPensamentos);  
+		timer.setRepeats(true);  
+		timer.start();
 	}
 	
 	public void addBotoes(){
@@ -200,7 +225,7 @@ public class MiniEditorJava extends JFrame
 				opnArquivo();
 			}
 		});
-		btnAbrir.setBounds(166, 291, 89, 23);
+		btnAbrir.setBounds(10, 300, 89, 23);
 		contentPane.add(btnAbrir);
 		
 		//Implementando botao Salvar
@@ -211,7 +236,7 @@ public class MiniEditorJava extends JFrame
 				wrtArquivo();
 			}
 		});
-		btnSalvar.setBounds(271, 291, 89, 23);
+		btnSalvar.setBounds(115, 300, 89, 23);
 		contentPane.add(btnSalvar);
 		
 		//Implementando botao de Saída
@@ -222,8 +247,24 @@ public class MiniEditorJava extends JFrame
 				System.exit(0);
 			}
 		});
-		btnSair.setBounds(381, 291, 89, 23);
+		btnSair.setBounds(225, 300, 89, 23);
 		contentPane.add(btnSair);
+		
+		tfPensamentos = new JTextField();
+		tfPensamentos.setFont(new Font("Verdana", Font.ITALIC, 12));
+		tfPensamentos.setHorizontalAlignment(SwingConstants.TRAILING);
+		tfPensamentos.setEditable(false);
+		tfPensamentos.setBounds(340, 319, 453, 22);
+		tfPensamentos.setBorder(null);
+		contentPane.add(tfPensamentos);
+		
+		tfAutor = new JTextField();
+		tfAutor.setFont(new Font("Verdana", Font.BOLD | Font.ITALIC, 12));
+		tfAutor.setHorizontalAlignment(SwingConstants.TRAILING);
+		tfAutor.setEditable(false);
+		tfAutor.setBounds(534, 299, 259, 22);
+		tfAutor.setBorder(null);
+		contentPane.add(tfAutor);
 	}
 	
 	//Limpa a textarea para carregar o novo arquivo na tela;
@@ -242,9 +283,9 @@ public class MiniEditorJava extends JFrame
 			int Result=arq.showSaveDialog(this);
 			if(Result==JFileChooser.APPROVE_OPTION)
 			{
-				arquivo = arq.getSelectedFile(); //Classe para Arquivos
+				arquivo = arq.getSelectedFile();
 				FileWriter inArq = new FileWriter(arquivo.getPath());
-				inArq.write(txtArea.getText()); // lê o arquivo
+				inArq.write(txtArea.getText()); 
 				inArq.close();
 			}
 		}catch(IOException ioe) {
@@ -329,6 +370,47 @@ public class MiniEditorJava extends JFrame
         }
         return codigoEstilo;
     }
+	
+	//Lê arquivo de pensamentos
+	public void getPensamentos() throws FileNotFoundException {
+		
+		
+	    FileInputStream meuarq = new FileInputStream("./Textos/Pensamentos.txt");
+	    Scanner sc = new Scanner(meuarq);
+	    
+	    pensamento = new ArrayList<String>();
+	    
+		while (sc.hasNextLine()) {
+			pensamento.add(sc.nextLine());
+		}
+	}
+	
+	public void runPensamentos() {
+		
+		int numeroLinhas=0;
+		int posPensamento=0;
+		String linhaAtual="";
+		int posDelimitador=0;
+		String txtAutor="";
+		String txtPensamento="";
+		
+		//Obtem numero de elementos do arraylist
+		numeroLinhas=pensamento.size()-1;
+				
+		Random rdn = new Random();
+		posPensamento = rdn.nextInt(numeroLinhas);
+		
+		System.out.printf("\nlinha %d", posPensamento); 
+		linhaAtual = pensamento.get(posPensamento).toString();
+		
+		posDelimitador = linhaAtual.indexOf(";");
+		
+		txtAutor = linhaAtual.substring(0, posDelimitador);
+		txtPensamento = linhaAtual.substring(posDelimitador+1, linhaAtual.length());
+		
+		tfAutor.setText(txtAutor);
+		tfPensamentos.setText("\""+txtPensamento+"\"");
+	}
         
 	
 	/**
